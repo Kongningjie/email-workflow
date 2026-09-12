@@ -18,6 +18,7 @@ dependencies = [
   "openai>=1.60,<2",
   "pydantic>=2.10,<3",
   "pydantic-settings>=2.7,<3",
+  "python-multipart>=0.0.20,<1",
   "pyyaml>=6.0.2,<7",
   "sqlalchemy[asyncio]>=2.0.36,<3",
   "uvicorn[standard]>=0.34,<1",
@@ -57,4 +58,7 @@ plugins = ["pydantic.mypy"]
 addopts = "-q --strict-markers --disable-warnings"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["live_llm: 需要显式启用的真实模型测试"]
+markers = [
+  "live_llm: 需要显式启用的真实模型测试",
+  "postgres: 需要独立 PostgreSQL 测试库的集成测试",
+]

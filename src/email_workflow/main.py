@@ -9,27 +9,68 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from email_workflow.api.health import router as health_router
+from email_workflow.api.imports import router as imports_router
+from email_workflow.application.evidence import EvidenceSegmenter
+from email_workflow.application.imports import EmailImportService, RetentionCleanupService
 from email_workflow.core.catalogs import validate_versioned_configs
 from email_workflow.core.config import Settings, get_settings
 from email_workflow.core.errors import AppError, register_error_handlers
 from email_workflow.core.logging import configure_logging
 from email_workflow.core.middleware import request_id_middleware
+from email_workflow.infrastructure.database import create_engine, create_session_factory
+from email_workflow.infrastructure.email_parser import SafeEmailParser
+from email_workflow.infrastructure.storage import ImportStorage
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     active_settings = settings or get_settings()
     configure_logging(active_settings.app_log_level)
+    engine = create_engine(active_settings.database_url)
+    session_factory = create_session_factory(engine)
+    storage = ImportStorage(active_settings.data_dir)
+    parser = SafeEmailParser(
+        max_body_chars=active_settings.max_clean_body_chars,
+        max_header_count=active_settings.max_header_count,
+        max_header_value_chars=active_settings.max_header_value_chars,
+        max_mime_depth=active_settings.max_mime_depth,
+        max_mime_parts=active_settings.max_mime_parts,
+    )
+    segmenter = EvidenceSegmenter(
+        segment_chars=active_settings.evidence_segment_chars,
+        overlap_chars=active_settings.evidence_overlap_chars,
+    )
+    import_service = EmailImportService(
+        session_factory=session_factory,
+        parser=parser,
+        segmenter=segmenter,
+        storage=storage,
+        max_upload_bytes=active_settings.max_upload_bytes,
+        raw_retention_hours=active_settings.raw_retention_hours,
+        evidence_retention_days=active_settings.evidence_retention_days,
+    )
+    cleanup_service = RetentionCleanupService(
+        session_factory=session_factory,
+        storage=storage,
+    )
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         validate_versioned_configs(active_settings.config_dir)
         active_settings.data_dir.mkdir(parents=True, exist_ok=True)
-        yield
+        if active_settings.app_env != "test":
+            await cleanup_service.cleanup(dry_run=False)
+        try:
+            yield
+        finally:
+            await engine.dispose()
 
     app = FastAPI(title=active_settings.app_name, version="0.1.0", lifespan=lifespan)
+    app.state.settings = active_settings
+    app.state.import_service = import_service
     app.middleware("http")(request_id_middleware)
     register_error_handlers(app)
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(imports_router, prefix="/api/v1")
 
     frontend_dir = active_settings.frontend_dist_dir
     assets_dir = frontend_dir / "assets"

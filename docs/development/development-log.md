@@ -46,3 +46,14 @@
 - 与冻结方案的偏差：无。
 - 遗留问题：无阶段 0 阻断项。
 - 下一步：推送已 Review 代码，随后进入阶段 1。
+
+## 2026-09-12 — 阶段 1：安全邮件导入与证据
+
+- 目标：实现仅限 `.eml` 的安全导入、确定性证据切片和短期数据清理，并满足阶段 1 验收标准。
+- 完成内容：新增上传外发确认、5 MiB 限制、扩展名与 MIME 校验、原文 SHA-256 去重及并发唯一约束处理；实现受限邮件结构、邮件头、MIME 深度与部件数检查，纯文本优先、HTML 主动内容及远程资源移除、引用分区、签名与声明清理、附件元数据隔离；生成带规范化偏移量和独立哈希的 EvidenceSegment；实现原文、清洗正文和附件清单的受控原子写入，以及应用启动和 CLI 的幂等保留期清理；新增导入和证据查询 API。
+- 变更文件／模块：`src/email_workflow/api`、`application`、`domain/email.py`、`infrastructure/email_parser.py`、`import_repository.py`、`storage.py`、`main.py`、`cli.py`，以及配置、依赖、容器和阶段 1 测试。
+- 数据库迁移：无；阶段 0 表结构已包含 ImportedEmail 和 EvidenceSegment 所需字段、约束及索引，`alembic check` 确认无漂移。
+- 测试与结果：Python compileall、Ruff、mypy 通过；pytest 33 项通过（包含独立 PostgreSQL 的导入、并发去重、失败留存、硬拒绝不落盘、证据及保留期测试）；八封黄金邮件解析通过；前端 lint/typecheck/test/build 与 npm audit 通过；Compose 三服务健康，上传确认拒绝返回 422 且不落库，首次导入返回 201，重复导入返回 200 和原 ID，导入／证据查询、HTML 远程资源移除、日志泄露检查及清理 dry-run 实机通过。
+- 与冻结方案的偏差：无。
+- 遗留问题：阶段 1 无阻断项；显式重新处理失败导入按冻结计划留待后续动作接口实现。
+- 下一步：推送经 Review 的阶段 1 功能分支；进入阶段 2 的单次 LLM 结构化提取与草稿生成。

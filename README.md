@@ -6,6 +6,7 @@
 
 ```powershell
 uv sync
+uv run alembic upgrade head
 uv run uvicorn email_workflow.main:app --reload
 ```
 
@@ -39,3 +40,10 @@ npm run build
 ```
 
 涉及容器、数据库或部署配置时，还必须运行 `docker compose up -d --build`，确认三个服务健康，并执行 `docker compose exec -T app alembic check`。
+
+清理过期邮件原文、规范化正文和证据摘录：
+
+```powershell
+uv run python -m email_workflow.cli cleanup --dry-run
+uv run python -m email_workflow.cli cleanup
+```

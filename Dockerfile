@@ -22,3 +22,9 @@ COPY --from=frontend-builder /build/frontend/dist frontend/dist/
 RUN mkdir -p /app/data
 EXPOSE 8000 8001
 CMD ["uvicorn", "email_workflow.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
+
+FROM runtime AS test
+RUN uv sync --frozen
+COPY tests/ tests/
+
+FROM runtime AS production
