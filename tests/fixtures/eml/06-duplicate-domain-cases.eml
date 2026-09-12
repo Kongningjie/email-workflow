@@ -1,0 +1,12 @@
+From: zhou.lin@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 14:00:00 +0800
+Subject: Helios 通信回归
+Message-ID: <fixture-06@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+通信领域：验证飞行模式关闭后网络恢复。负责人周林，工号 000567890。
+通信领域：验证飞行模式关闭后网络恢复。负责人周林，工号 000567890。
+请勿生成重复领域或重复用例，重复信息仅合并证据。

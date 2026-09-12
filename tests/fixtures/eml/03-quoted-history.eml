@@ -1,0 +1,18 @@
+From: chen.yu@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 11:00:00 +0800
+Subject: Re: Atlas 稳定性测试补充
+Message-ID: <fixture-03@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+同意原计划，补充连续运行 72 小时后检查内存占用。
+
+-----Original Message-----
+From: product@example.test
+Sent: Wednesday, September 9, 2026 4:00 PM
+Subject: Atlas 稳定性测试
+
+项目 Atlas，编码 ATLAS-3，负责人陈宇，工号 000456789。
+系统阶段稳定性测试，版本 3.4，日期 2026-09-21 至 2026-09-24。

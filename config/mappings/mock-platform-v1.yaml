@@ -1,0 +1,32 @@
+version: "1.0.0"
+contract_version: "1.0"
+fixed_values:
+  source_system: EMAIL_WORKFLOW
+fields:
+  plan_name: planName
+  project_name: projectName
+  project_code: projectCode
+  requirement_ids: requirementIds
+  test_type: testType
+  test_stage: testStage
+  test_round: testRound
+  priority: priority
+  test_version: testVersion
+  planned_start_date: plannedStartDate
+  planned_end_date: plannedEndDate
+  objective: objective
+  scope: scope
+  environment: environment
+  risks: risks
+  dependencies: dependencies
+  details: domains
+forbidden_fields:
+  - raw_email
+  - body
+  - attachments
+  - evidence_references
+  - prompt
+  - model_response
+  - open_questions
+  - unresolved_fields
+  - review_comment

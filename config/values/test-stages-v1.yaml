@@ -1,0 +1,6 @@
+version: "1.0.0"
+items:
+  - {key: component, display_name: 组件测试, platform_value: COMPONENT, aliases: [组件], enabled: true}
+  - {key: integration, display_name: 集成测试, platform_value: INTEGRATION, aliases: [集成], enabled: true}
+  - {key: system, display_name: 系统测试, platform_value: SYSTEM, aliases: [系统], enabled: true}
+  - {key: acceptance, display_name: 验收测试, platform_value: ACCEPTANCE, aliases: [验收], enabled: true}

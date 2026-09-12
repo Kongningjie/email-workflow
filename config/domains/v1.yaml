@@ -1,0 +1,17 @@
+version: "1.0.0"
+items:
+  - key: communication
+    display_name: 通信
+    platform_value: COMM
+    aliases: [通信测试, connectivity, network]
+    enabled: true
+  - key: stability
+    display_name: 稳定性
+    platform_value: STAB
+    aliases: [稳定性测试, endurance, reliability]
+    enabled: true
+  - key: power
+    display_name: 功耗
+    platform_value: PWR
+    aliases: [功耗测试, power consumption, energy]
+    enabled: true

@@ -1,0 +1,9 @@
+version: "1.0.0"
+items:
+  - {key: functional, display_name: 功能测试, platform_value: FUNCTIONAL, aliases: [功能], enabled: true}
+  - {key: regression, display_name: 回归测试, platform_value: REGRESSION, aliases: [回归], enabled: true}
+  - {key: smoke, display_name: 冒烟测试, platform_value: SMOKE, aliases: [冒烟], enabled: true}
+  - {key: performance, display_name: 性能测试, platform_value: PERFORMANCE, aliases: [性能], enabled: true}
+  - {key: stability, display_name: 稳定性测试, platform_value: STABILITY, aliases: [稳定性], enabled: true}
+  - {key: compatibility, display_name: 兼容性测试, platform_value: COMPATIBILITY, aliases: [兼容性], enabled: true}
+  - {key: security, display_name: 安全测试, platform_value: SECURITY, aliases: [安全], enabled: true}

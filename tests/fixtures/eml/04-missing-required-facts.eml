@@ -1,0 +1,11 @@
+From: sun.hao@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 12:00:00 +0800
+Subject: Vega 功耗测试需求
+Message-ID: <fixture-04@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+请为 Vega 项目安排功耗测试，重点检查视频播放场景的平均功耗。
+负责人、工号和计划日期稍后确认。

@@ -1,0 +1,13 @@
+From: limit.test@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 16:00:00 +0800
+Subject: Polaris 大规模通信回归
+Message-ID: <fixture-08@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+项目 Polaris，编码 POLARIS-9，通信领域回归测试，系统阶段，版本 9.1。
+日期 2026-09-26 至 2026-09-30，负责人林澈，工号 000678901。
+请覆盖 100 个编号场景 CASE-001 至 CASE-100；每个场景包含网络接入、切换、业务验证和恢复检查。
+这是生成规模边界样例：提取结果总用例数不得超过 100，每领域不得超过 20，超出的明确需求必须进入待确认问题而非静默丢弃。

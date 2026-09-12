@@ -1,0 +1,10 @@
+From: wang.fang@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 10:00:00 +0800
+Subject: Nova 多领域验收安排
+Message-ID: <fixture-02@example.test>
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+<html><body><h1>Nova 验收测试</h1><p>项目编码 NOVA-7，版本 7.0，日期 2026-09-20 至 2026-09-25。</p><table><tr><th>领域</th><th>负责人</th><th>工号</th><th>目标</th></tr><tr><td>通信</td><td>王芳</td><td>000234567</td><td>验证漫游恢复</td></tr><tr><td>功耗</td><td>赵青</td><td>000345678</td><td>验证待机功耗</td></tr></table><img src="https://tracker.invalid/pixel"/><script>alert('never run')</script></body></html>

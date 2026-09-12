@@ -1,0 +1,16 @@
+From: li.ming@example.test
+To: qa@example.test
+Date: Thu, 10 Sep 2026 09:30:00 +0800
+Subject: Orion R2 通信功能测试计划
+Message-ID: <fixture-01@example.test>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+项目：Orion，项目编码：ORION-R2，需求编号：REQ-1001。
+请执行通信领域功能测试，系统测试阶段，优先级高，版本 R2。
+计划日期为 2026-09-15 至 2026-09-18，负责人李明，工号 000123456。
+目标是验证设备在弱网切换后能够自动恢复连接。
+范围包括 Wi-Fi 与蜂窝网络切换；前置条件为设备已登录测试账号。
+步骤：连接 Wi-Fi；关闭接入点；等待蜂窝网络接管。
+预期结果：30 秒内恢复联网且业务会话保持。

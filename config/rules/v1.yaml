@@ -1,0 +1,31 @@
+version: "1.0.0"
+rules:
+  - {id: plan.required_fields, version: "1.0", severity: blocking, enabled: true, message: 计划必填字段不完整}
+  - {id: plan.date_order, version: "1.0", severity: blocking, enabled: true, message: 计划结束日期不得早于开始日期}
+  - {id: plan.has_details, version: "1.0", severity: blocking, enabled: true, message: 计划至少需要一个领域明细}
+  - {id: domain.known_enabled, version: "1.0", severity: blocking, enabled: true, message: 领域必须来自已启用字典}
+  - {id: domain.owner_required, version: "1.0", severity: blocking, enabled: true, message: 领域负责人及工号必填}
+  - {id: domain.employee_id, version: "1.0", severity: blocking, enabled: true, message: 工号必须为 9 位数字}
+  - {id: domain.date_range, version: "1.0", severity: blocking, enabled: true, message: 领域日期必须位于计划日期内}
+  - {id: domain.unique, version: "1.0", severity: blocking, enabled: true, message: 同一计划不可重复领域}
+  - {id: domain.requirements, version: "1.0", severity: blocking, enabled: true, message: 领域至少需要一项需求}
+  - {id: domain.test_cases, version: "1.0", severity: blocking, enabled: true, message: 领域至少需要一条测试用例}
+  - {id: case.required_fields, version: "1.0", severity: blocking, enabled: true, message: 用例必填字段不完整}
+  - {id: case.domain_match, version: "1.0", severity: blocking, enabled: true, message: 用例领域必须与父领域一致}
+  - {id: case.evidence_required, version: "1.0", severity: blocking, enabled: true, message: 正式用例至少需要一个证据锚点}
+  - {id: evidence.integrity, version: "1.0", severity: blocking, enabled: true, message: 证据不存在、越界或哈希不一致}
+  - {id: extraction.open_questions, version: "1.0", severity: blocking, enabled: true, message: 存在未解决的必填字段}
+  - {id: catalog.value_enabled, version: "1.0", severity: blocking, enabled: true, message: 值域必须存在且已启用}
+  - {id: platform.payload_contract, version: "1.0", severity: blocking, enabled: true, message: 平台报文不符合硬性契约}
+  - {id: case.duplicate, version: "1.0", severity: warning, enabled: true, message: 存在标准化后完全重复的用例}
+  - {id: domain.default_owner, version: "1.0", severity: warning, enabled: true, message: 使用了领域字典默认负责人}
+  - {id: plan.context_missing, version: "1.0", severity: warning, enabled: true, message: 测试环境、风险或依赖为空}
+  - {id: platform.near_limit, version: "1.0", severity: warning, enabled: true, message: 文本接近平台字段上限}
+  - {id: requirement.only_model_cases, version: "1.0", severity: warning, enabled: true, message: 需求只有模型建议用例}
+  - {id: evidence.quoted_only, version: "1.0", severity: warning, enabled: true, message: 关键事实只存在于历史引用正文}
+  - {id: evidence.partition_uncertain, version: "1.0", severity: warning, enabled: true, message: 无法可靠分离当前正文与引用区}
+  - {id: security.prompt_injection, version: "1.0", severity: warning, enabled: true, message: 邮件包含疑似提示注入文本}
+  - {id: defaults.derived_value, version: "1.0", severity: info, enabled: true, message: 字段使用确定性继承值}
+  - {id: case.model_suggestion, version: "1.0", severity: info, enabled: true, message: 用例来源为模型建议}
+  - {id: plan.optional_field_missing, version: "1.0", severity: info, enabled: true, message: 可选字段缺失}
+  - {id: case.content_suggestion, version: "1.0", severity: info, enabled: true, message: 用例文本存在非阻断优化建议}

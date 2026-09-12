@@ -1,0 +1,65 @@
+name: email-workflow
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: email_workflow
+      POSTGRES_USER: email_workflow
+      POSTGRES_PASSWORD: email_workflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U email_workflow -d email_workflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mock-gateway:
+    build: .
+    command: ["uvicorn", "mock_gateway.main:app", "--host", "0.0.0.0", "--port", "8001", "--no-access-log"]
+    environment:
+      APP_ENV: development
+      MOCK_GATEWAY_KEY_ID: ${MOCK_GATEWAY_KEY_ID:-local-demo}
+      MOCK_GATEWAY_HMAC_SECRET: ${MOCK_GATEWAY_HMAC_SECRET:-replace-with-a-local-demo-secret}
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    command: ["sh", "-c", "alembic upgrade head && uvicorn email_workflow.main:app --host 0.0.0.0 --port 8000 --no-access-log"]
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+asyncpg://email_workflow:email_workflow@database:5432/email_workflow
+      DATA_DIR: /app/data
+      CONFIG_DIR: /app/config
+      FRONTEND_DIST_DIR: /app/frontend/dist
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      DASHSCOPE_BASE_URL: ${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      DASHSCOPE_MODEL: qwen3.7-plus-2026-05-26
+      MOCK_GATEWAY_BASE_URL: http://mock-gateway:8001
+      MOCK_GATEWAY_KEY_ID: ${MOCK_GATEWAY_KEY_ID:-local-demo}
+      MOCK_GATEWAY_HMAC_SECRET: ${MOCK_GATEWAY_HMAC_SECRET:-replace-with-a-local-demo-secret}
+    depends_on:
+      database:
+        condition: service_healthy
+      mock-gateway:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
+  app-data:

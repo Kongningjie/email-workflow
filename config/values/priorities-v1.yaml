@@ -1,0 +1,6 @@
+version: "1.0.0"
+items:
+  - {key: critical, display_name: 紧急, platform_value: CRITICAL, aliases: [P0, 阻断], enabled: true}
+  - {key: high, display_name: 高, platform_value: HIGH, aliases: [P1, 高优先级], enabled: true}
+  - {key: medium, display_name: 中, platform_value: MEDIUM, aliases: [P2, 中优先级], enabled: true}
+  - {key: low, display_name: 低, platform_value: LOW, aliases: [P3, 低优先级], enabled: true}
