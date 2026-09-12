@@ -47,3 +47,14 @@ npm run build
 uv run python -m email_workflow.cli cleanup --dry-run
 uv run python -m email_workflow.cli cleanup
 ```
+
+上传接口在邮件解析后同步执行一次结构化提取。未配置 `DASHSCOPE_API_KEY`，或模型调用、JSON Schema、Pydantic、证据校验失败时，接口仍会创建可人工填写的版本 1 空白草稿，并将邮件标记为 `extraction_failed`。
+
+阶段 2 可用查询接口：
+
+```text
+GET /api/v1/test-plans
+GET /api/v1/test-plans/{plan_id}
+GET /api/v1/test-plans/{plan_id}/versions
+GET /api/v1/test-plans/{plan_id}/versions/{version_number}
+```

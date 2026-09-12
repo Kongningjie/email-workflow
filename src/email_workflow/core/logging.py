@@ -19,6 +19,17 @@ class JsonFormatter(logging.Formatter):
         request_id = getattr(record, "request_id", None)
         if isinstance(request_id, str):
             payload["request_id"] = request_id
+        for field_name in (
+            "llm_model",
+            "duration_ms",
+            "prompt_tokens",
+            "completion_tokens",
+            "provider_request_id",
+            "result_status",
+        ):
+            value = getattr(record, field_name, None)
+            if isinstance(value, (str, int)):
+                payload[field_name] = value
         return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 
 

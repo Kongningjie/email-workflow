@@ -50,6 +50,7 @@ async def create_import(
         result.imported_email,
         deduplicated=result.deduplicated,
         warnings=[warning.value for warning in result.warnings],
+        test_plan_id=result.test_plan_id,
     )
 
 
@@ -61,7 +62,11 @@ async def get_import(
     imported = await service.get_import(import_id)
     if imported is None:
         raise AppError(code="import_not_found", message="导入记录不存在", status_code=404)
-    return ImportResponse.from_record(imported, deduplicated=False)
+    return ImportResponse.from_record(
+        imported,
+        deduplicated=False,
+        test_plan_id=await service.get_plan_id(imported.id),
+    )
 
 
 @router.get("/evidence/{segment_id}", response_model=EvidenceResponse)

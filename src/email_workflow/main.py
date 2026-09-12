@@ -10,21 +10,31 @@ from fastapi.staticfiles import StaticFiles
 
 from email_workflow.api.health import router as health_router
 from email_workflow.api.imports import router as imports_router
+from email_workflow.api.plans import router as plans_router
 from email_workflow.application.evidence import EvidenceSegmenter
+from email_workflow.application.extraction import CatalogBundle, EvidenceRebuilder
 from email_workflow.application.imports import EmailImportService, RetentionCleanupService
-from email_workflow.core.catalogs import validate_versioned_configs
+from email_workflow.application.plan_generation import PlanGenerationService
+from email_workflow.application.plans import PlanQueryService
+from email_workflow.core.catalogs import (
+    load_catalog,
+    load_prompt_document,
+    validate_versioned_configs,
+)
 from email_workflow.core.config import Settings, get_settings
 from email_workflow.core.errors import AppError, register_error_handlers
 from email_workflow.core.logging import configure_logging
 from email_workflow.core.middleware import request_id_middleware
 from email_workflow.infrastructure.database import create_engine, create_session_factory
 from email_workflow.infrastructure.email_parser import SafeEmailParser
+from email_workflow.infrastructure.llm import LLMExtractor
 from email_workflow.infrastructure.storage import ImportStorage
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     active_settings = settings or get_settings()
     configure_logging(active_settings.app_log_level)
+    validate_versioned_configs(active_settings.config_dir)
     engine = create_engine(active_settings.database_url)
     session_factory = create_session_factory(engine)
     storage = ImportStorage(active_settings.data_dir)
@@ -39,6 +49,33 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         segment_chars=active_settings.evidence_segment_chars,
         overlap_chars=active_settings.evidence_overlap_chars,
     )
+    catalogs = CatalogBundle(
+        domains=load_catalog(active_settings.config_dir / "domains/v1.yaml"),
+        test_types=load_catalog(active_settings.config_dir / "values/test-types-v1.yaml"),
+        test_stages=load_catalog(active_settings.config_dir / "values/test-stages-v1.yaml"),
+        priorities=load_catalog(active_settings.config_dir / "values/priorities-v1.yaml"),
+    )
+    prompt = load_prompt_document(active_settings.config_dir / "prompts/extraction-v1.yaml")
+    if prompt.model != active_settings.dashscope_model:
+        raise ValueError("Prompt 配置模型必须与 DASHSCOPE_MODEL 一致")
+    api_key = (
+        active_settings.dashscope_api_key.get_secret_value()
+        if active_settings.dashscope_api_key is not None
+        else None
+    )
+    plan_generator = PlanGenerationService(
+        session_factory=session_factory,
+        extractor=LLMExtractor(
+            api_key=api_key,
+            base_url=active_settings.dashscope_base_url,
+            model=active_settings.dashscope_model,
+            timeout_seconds=active_settings.llm_timeout_seconds,
+            prompt=prompt,
+        ),
+        catalogs=catalogs,
+        prompt=prompt,
+        evidence_rebuilder=EvidenceRebuilder(storage),
+    )
     import_service = EmailImportService(
         session_factory=session_factory,
         parser=parser,
@@ -47,7 +84,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         max_upload_bytes=active_settings.max_upload_bytes,
         raw_retention_hours=active_settings.raw_retention_hours,
         evidence_retention_days=active_settings.evidence_retention_days,
+        plan_generator=plan_generator,
     )
+    plan_query_service = PlanQueryService(session_factory)
     cleanup_service = RetentionCleanupService(
         session_factory=session_factory,
         storage=storage,
@@ -55,7 +94,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-        validate_versioned_configs(active_settings.config_dir)
         active_settings.data_dir.mkdir(parents=True, exist_ok=True)
         if active_settings.app_env != "test":
             await cleanup_service.cleanup(dry_run=False)
@@ -67,10 +105,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title=active_settings.app_name, version="0.1.0", lifespan=lifespan)
     app.state.settings = active_settings
     app.state.import_service = import_service
+    app.state.plan_query_service = plan_query_service
     app.middleware("http")(request_id_middleware)
     register_error_handlers(app)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(imports_router, prefix="/api/v1")
+    app.include_router(plans_router, prefix="/api/v1")
 
     frontend_dir = active_settings.frontend_dist_dir
     assets_dir = frontend_dir / "assets"

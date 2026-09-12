@@ -47,6 +47,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*.py" = ["E501"]
+"src/email_workflow/application/extraction.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.12"

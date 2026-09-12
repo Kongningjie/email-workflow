@@ -7,7 +7,7 @@ from typing import Any, cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from email_workflow.infrastructure.models import EvidenceSegment, ImportedEmail
+from email_workflow.infrastructure.models import EvidenceSegment, ImportedEmail, TestPlan
 
 
 class ImportRepository:
@@ -53,6 +53,10 @@ class ImportRepository:
 
     async def get_evidence(self, segment_id: uuid.UUID) -> EvidenceSegment | None:
         return await self.session.get(EvidenceSegment, segment_id)
+
+    async def plan_id_for_import(self, import_id: uuid.UUID) -> uuid.UUID | None:
+        statement = select(TestPlan.id).where(TestPlan.source_email_id == import_id)
+        return cast(uuid.UUID | None, await self.session.scalar(statement))
 
 
 def imported_email_snapshot(imported: ImportedEmail) -> dict[str, Any]:

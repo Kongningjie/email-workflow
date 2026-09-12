@@ -57,6 +57,15 @@ class RuleSet(BaseModel):
         return self
 
 
+class PromptLimits(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    max_domains: int = Field(gt=0)
+    max_cases_per_domain: int = Field(gt=0)
+    max_cases_total: int = Field(gt=0)
+    max_steps_per_case: int = Field(gt=0)
+
+
 class PromptDocument(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -65,7 +74,7 @@ class PromptDocument(BaseModel):
     temperature: float
     thinking: bool
     system_prompt: str
-    limits: dict[str, int]
+    limits: PromptLimits
 
 
 class MappingDocument(BaseModel):
@@ -84,6 +93,14 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"配置文件必须是 YAML 对象: {path.name}")
     return payload
+
+
+def load_catalog(path: Path) -> Catalog:
+    return Catalog.model_validate(_read_yaml(path))
+
+
+def load_prompt_document(path: Path) -> PromptDocument:
+    return PromptDocument.model_validate(_read_yaml(path))
 
 
 def validate_versioned_configs(config_dir: Path) -> None:

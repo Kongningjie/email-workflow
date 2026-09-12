@@ -1,26 +1,34 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import jcs  # type: ignore[import-untyped]
 import pytest
 import pytest_asyncio
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from email_workflow.application.evidence import EvidenceSegmenter
+from email_workflow.application.extraction import CatalogBundle, EvidenceRebuilder, FakeExtractor
 from email_workflow.application.imports import (
     EmailImportService,
+    PlanGenerator,
     RetentionCleanupService,
 )
+from email_workflow.application.plan_generation import PlanGenerationService
+from email_workflow.core.catalogs import load_catalog, load_prompt_document
 from email_workflow.infrastructure.database import create_engine, create_session_factory
 from email_workflow.infrastructure.email_parser import EmailParseError, SafeEmailParser
 from email_workflow.infrastructure.import_repository import ImportRepository
 from email_workflow.infrastructure.models import Base, ImportedEmail
+from email_workflow.infrastructure.plan_repository import PlanRepository
 from email_workflow.infrastructure.storage import ImportStorage
+from tests.factories import make_extraction_payload
 
 pytestmark = pytest.mark.postgres
 
@@ -59,6 +67,7 @@ def build_service(
     session_factory: async_sessionmaker[AsyncSession],
     storage: ImportStorage,
     clock: FixedClock,
+    plan_generator: PlanGenerator | None = None,
 ) -> EmailImportService:
     parser = SafeEmailParser(
         max_body_chars=200_000,
@@ -75,7 +84,29 @@ def build_service(
         max_upload_bytes=5 * 1024 * 1024,
         raw_retention_hours=24,
         evidence_retention_days=90,
+        plan_generator=plan_generator,
         clock=clock,
+    )
+
+
+def build_plan_generator(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    storage: ImportStorage,
+    extractor: FakeExtractor,
+) -> PlanGenerationService:
+    config = Path("config")
+    return PlanGenerationService(
+        session_factory=session_factory,
+        extractor=extractor,
+        catalogs=CatalogBundle(
+            domains=load_catalog(config / "domains/v1.yaml"),
+            test_types=load_catalog(config / "values/test-types-v1.yaml"),
+            test_stages=load_catalog(config / "values/test-stages-v1.yaml"),
+            priorities=load_catalog(config / "values/priorities-v1.yaml"),
+        ),
+        prompt=load_prompt_document(config / "prompts/extraction-v1.yaml"),
+        evidence_rebuilder=EvidenceRebuilder(storage),
     )
 
 
@@ -239,3 +270,138 @@ async def test_hard_upload_rejections_leave_no_record_or_file(
         record_count = await session.scalar(select(func.count()).select_from(ImportedEmail))
     assert record_count == 0
     assert not (tmp_path / "imports").exists()
+
+
+@pytest.mark.asyncio
+async def test_import_generates_one_validated_plan_version_and_duplicate_skips_extractor(
+    postgres_session_factory: tuple[AsyncEngine, async_sessionmaker[AsyncSession]],
+    tmp_path: Path,
+) -> None:
+    _, session_factory = postgres_session_factory
+    storage = ImportStorage(tmp_path)
+    extractor = FakeExtractor(make_extraction_payload())
+    service = build_service(
+        session_factory=session_factory,
+        storage=storage,
+        plan_generator=build_plan_generator(
+            session_factory=session_factory,
+            storage=storage,
+            extractor=extractor,
+        ),
+        clock=FixedClock(datetime(2026, 9, 12, 8, 0, tzinfo=UTC)),
+    )
+    raw = Path("tests/fixtures/eml/01-plain-single-domain.eml").read_bytes()
+
+    first = await service.import_email(
+        filename="plan.eml",
+        content_type="message/rfc822",
+        raw=raw,
+        external_processing_confirmed=True,
+    )
+    duplicate = await service.import_email(
+        filename="duplicate.eml",
+        content_type="message/rfc822",
+        raw=raw,
+        external_processing_confirmed=True,
+    )
+
+    assert first.test_plan_id is not None
+    assert duplicate.test_plan_id == first.test_plan_id
+    assert extractor.call_count == 1
+    async with session_factory() as session:
+        imported = await ImportRepository(session).get(first.imported_email.id)
+        plan = await PlanRepository(session).get(first.test_plan_id)
+        version = await PlanRepository(session).version(first.test_plan_id, 1)
+        versions = await PlanRepository(session).versions(first.test_plan_id)
+    assert imported is not None and imported.extraction_status == "extracted"
+    assert imported.safe_error_summary is None
+    assert plan is not None and plan.current_version == 1 and plan.status == "draft"
+    assert version is not None
+    assert version.content["test_type"] == "functional"
+    assert version.content["details"][0]["domain_key"] == "communication"
+    assert version.content["details"][0]["domain_code"] == "COMM"
+    assert len(version.content_sha256) == 64
+    assert version.content_sha256 == hashlib.sha256(jcs.canonicalize(version.content)).hexdigest()
+    assert version.prompt_version == "1.1.0"
+    prompt = load_prompt_document(Path("config/prompts/extraction-v1.yaml"))
+    assert version.prompt_sha256 == hashlib.sha256(prompt.system_prompt.encode()).hexdigest()
+    assert len(versions) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure_code", ["timeout", "rate_limited", "invalid_json", "extractor_exception"]
+)
+async def test_extraction_failure_creates_blank_version_one(
+    postgres_session_factory: tuple[AsyncEngine, async_sessionmaker[AsyncSession]],
+    tmp_path: Path,
+    failure_code: str,
+) -> None:
+    _, session_factory = postgres_session_factory
+    storage = ImportStorage(tmp_path)
+    extractor = (
+        FakeExtractor(unexpected_exception=RuntimeError("simulated"))
+        if failure_code == "extractor_exception"
+        else FakeExtractor(failure_code=failure_code)
+    )
+    service = build_service(
+        session_factory=session_factory,
+        storage=storage,
+        plan_generator=build_plan_generator(
+            session_factory=session_factory,
+            storage=storage,
+            extractor=extractor,
+        ),
+        clock=FixedClock(datetime(2026, 9, 12, 8, 0, tzinfo=UTC)),
+    )
+    raw = Path("tests/fixtures/eml/04-missing-required-facts.eml").read_bytes()
+
+    result = await service.import_email(
+        filename="fallback.eml",
+        content_type="message/rfc822",
+        raw=raw,
+        external_processing_confirmed=True,
+    )
+
+    assert result.test_plan_id is not None
+    async with session_factory() as session:
+        imported = await ImportRepository(session).get(result.imported_email.id)
+        version = await PlanRepository(session).version(result.test_plan_id, 1)
+    assert imported is not None and imported.extraction_status == "extraction_failed"
+    assert imported.safe_error_summary == f"extraction_{failure_code}"
+    assert version is not None and version.content["details"] == []
+    assert version.content["plan_name"] == result.imported_email.subject
+    assert any("结构化提取失败" in item for item in version.content["open_questions"])
+
+
+@pytest.mark.asyncio
+async def test_unknown_model_evidence_id_falls_back_to_blank_plan(
+    postgres_session_factory: tuple[AsyncEngine, async_sessionmaker[AsyncSession]],
+    tmp_path: Path,
+) -> None:
+    _, session_factory = postgres_session_factory
+    storage = ImportStorage(tmp_path)
+    service = build_service(
+        session_factory=session_factory,
+        storage=storage,
+        plan_generator=build_plan_generator(
+            session_factory=session_factory,
+            storage=storage,
+            extractor=FakeExtractor(make_extraction_payload("unknown-evidence")),
+        ),
+        clock=FixedClock(datetime(2026, 9, 12, 8, 0, tzinfo=UTC)),
+    )
+
+    result = await service.import_email(
+        filename="unknown-evidence.eml",
+        content_type="message/rfc822",
+        raw=Path("tests/fixtures/eml/05-prompt-injection.eml").read_bytes(),
+        external_processing_confirmed=True,
+    )
+
+    assert result.test_plan_id is not None
+    async with session_factory() as session:
+        imported = await ImportRepository(session).get(result.imported_email.id)
+    assert imported is not None
+    assert imported.extraction_status == "extraction_failed"
+    assert imported.safe_error_summary == "extraction_unknown_evidence_id"

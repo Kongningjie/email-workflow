@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     evidence_overlap_chars: int = 100
     raw_retention_hours: int = 24
     evidence_retention_days: int = 90
+    llm_timeout_seconds: int = 60
 
     @field_validator("data_dir", "config_dir", "frontend_dist_dir", mode="after")
     @classmethod
@@ -61,6 +62,7 @@ class Settings(BaseSettings):
         "evidence_segment_chars",
         "raw_retention_hours",
         "evidence_retention_days",
+        "llm_timeout_seconds",
     )
     @classmethod
     def positive_limit(cls, value: int) -> int:

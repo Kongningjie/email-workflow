@@ -57,3 +57,14 @@
 - 与冻结方案的偏差：无。
 - 遗留问题：阶段 1 无阻断项；显式重新处理失败导入按冻结计划留待后续动作接口实现。
 - 下一步：推送经 Review 的阶段 1 功能分支；进入阶段 2 的单次 LLM 结构化提取与草稿生成。
+
+## 2026-09-12 — 阶段 2：单次 LLM 结构化提取与草稿
+
+- 目标：实现一次受控 DashScope 结构化提取、可信证据重建和版本 1 草稿生成，并在所有提取失败场景安全降级。
+- 完成内容：建立 Pydantic 严格提取 Schema、StructuredRequirementExtractor 协议、FakeExtractor 和基于 OpenAI Python SDK 的 LLMExtractor；采用 DashScope OpenAI-compatible Chat Completions、`json_schema`、关闭思考、60 秒超时、零 SDK 重试且不设置 `max_tokens`；仅向模型发送临时 evidence ID、清洗摘录和白名单字典；实现未知证据整体拒绝、证据边界与哈希重建、无证据事实清空、字典别名映射、允许的确定性派生、生成规模校验、RFC 8785 内容哈希、Prompt 版本／哈希及不可变版本 1；无 Key、超时、限流、服务异常、拒答、无效结构和证据失败均创建可人工填写的空白草稿；新增计划列表、详情和版本查询 API。
+- 变更文件／模块：`domain/plan.py`、`application/extraction.py`、`plan_generation.py`、`plans.py`、`infrastructure/llm.py`、`plan_repository.py`、计划 API／Schema、应用装配、Prompt 配置和阶段 2 测试。
+- 数据库迁移：无；阶段 0 已创建 TestPlan 和 TestPlanVersion，`alembic check` 确认无结构漂移。
+- 测试与结果：Python compileall、Ruff、mypy 通过；pytest 51 项通过、1 项 live LLM 按门禁跳过，覆盖 FakeExtractor 成功／超时／限流／异常／无效结构、未知证据、无证据事实、规模限制、证据篡改、并发去重、版本 1 持久化及 OpenAI SDK 严格 Schema 请求；前端 lint/typecheck/test/build 及 npm audit 通过；Compose 无 Key 实机链路生成 `extraction_failed` 空白草稿，首次／重复上传和计划查询状态正确，重复上传未产生第二次模型调用日志，日志未出现邮件正文。
+- 与冻结方案的偏差：无。
+- 遗留问题：真实 DashScope live LLM 指标评测未自动执行，按冻结要求留待配置有效 Key 后人工显式触发；同步调用仍可能使上传等待至 60 秒。
+- 下一步：推送经 Review 的阶段 2 功能分支；进入阶段 3 的规则、版本与人工 Review。

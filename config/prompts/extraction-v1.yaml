@@ -1,4 +1,4 @@
-version: "1.0.0"
+version: "1.1.0"
 model: qwen3.7-plus-2026-05-26
 temperature: 0.1
 thinking: false
@@ -9,6 +9,12 @@ system_prompt: |-
   不得猜测领域编码、负责人、工号、日期、项目、优先级或其他事实；
   缺失或含糊的必填事实必须写入 open_questions 或 unresolved_fields。
   model_suggestion 必须基于至少一个邮件证据，不得生成无邮件依据的泛化用例。
+  每个非空事实必须在对应 evidence_ids 中列出直接支撑它的临时证据 ID；
+  没有证据的事实输出空字符串或空列表，不得用常识补全。
+  领域、测试类型、测试阶段和优先级只能输出输入白名单中的 key 或别名；
+  领域名称、领域编码和默认值由可信代码填充，不由你输出。
+  日期仅使用 YYYY-MM-DD；不明确的日期留空并加入待确认项。
+  用例步骤从 1 开始连续编号；source 表示邮件明确要求，model_suggestion 表示基于证据的建议。
 limits:
   max_domains: 10
   max_cases_per_domain: 20

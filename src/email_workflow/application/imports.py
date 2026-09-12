@@ -21,6 +21,10 @@ class Clock(Protocol):
     def now(self) -> datetime: ...
 
 
+class PlanGenerator(Protocol):
+    async def generate(self, import_id: uuid.UUID) -> uuid.UUID: ...
+
+
 class UtcClock:
     def now(self) -> datetime:
         return datetime.now(UTC)
@@ -31,6 +35,7 @@ class ImportResult:
     imported_email: ImportedEmail
     deduplicated: bool
     warnings: tuple[ParseWarningCode, ...] = ()
+    test_plan_id: uuid.UUID | None = None
 
 
 class EmailImportService:
@@ -48,6 +53,7 @@ class EmailImportService:
         max_upload_bytes: int,
         raw_retention_hours: int,
         evidence_retention_days: int,
+        plan_generator: PlanGenerator | None = None,
         clock: Clock | None = None,
     ) -> None:
         self.session_factory = session_factory
@@ -57,6 +63,7 @@ class EmailImportService:
         self.max_upload_bytes = max_upload_bytes
         self.raw_retention_hours = raw_retention_hours
         self.evidence_retention_days = evidence_retention_days
+        self.plan_generator = plan_generator
         self.clock = clock or UtcClock()
 
     async def import_email(
@@ -78,7 +85,11 @@ class EmailImportService:
             repository = ImportRepository(session)
             existing = await repository.find_by_hash(content_sha256)
             if existing is not None:
-                return ImportResult(imported_email=existing, deduplicated=True)
+                return ImportResult(
+                    imported_email=existing,
+                    deduplicated=True,
+                    test_plan_id=await repository.plan_id_for_import(existing.id),
+                )
 
             now = self.clock.now()
             imported = ImportedEmail(
@@ -102,7 +113,11 @@ class EmailImportService:
                 concurrent = await repository.find_by_hash(content_sha256)
                 if concurrent is None:
                     raise
-                return ImportResult(imported_email=concurrent, deduplicated=True)
+                return ImportResult(
+                    imported_email=concurrent,
+                    deduplicated=True,
+                    test_plan_id=await repository.plan_id_for_import(concurrent.id),
+                )
 
             try:
                 self.storage.write_import(imported.id, raw, None)
@@ -130,7 +145,7 @@ class EmailImportService:
                 ]
                 repository.add_evidence(evidence)
                 await session.commit()
-                return ImportResult(
+                successful_result = ImportResult(
                     imported_email=imported,
                     deduplicated=False,
                     warnings=parsed.warnings,
@@ -149,6 +164,19 @@ class EmailImportService:
                 await session.rollback()
                 self.storage.purge_import_content(imported.id, dry_run=False)
                 raise
+        if self.plan_generator is None:
+            return successful_result
+        plan_id = await self.plan_generator.generate(successful_result.imported_email.id)
+        async with self.session_factory() as session:
+            refreshed = await ImportRepository(session).get(successful_result.imported_email.id)
+        if refreshed is None:
+            raise RuntimeError("计划生成后导入记录不存在")
+        return ImportResult(
+            imported_email=refreshed,
+            deduplicated=False,
+            warnings=successful_result.warnings,
+            test_plan_id=plan_id,
+        )
 
     async def get_import(self, import_id: uuid.UUID) -> ImportedEmail | None:
         async with self.session_factory() as session:
@@ -157,6 +185,10 @@ class EmailImportService:
     async def get_evidence(self, segment_id: uuid.UUID) -> EvidenceSegment | None:
         async with self.session_factory() as session:
             return await ImportRepository(session).get_evidence(segment_id)
+
+    async def get_plan_id(self, import_id: uuid.UUID) -> uuid.UUID | None:
+        async with self.session_factory() as session:
+            return await ImportRepository(session).plan_id_for_import(import_id)
 
     def _validate_upload(
         self,
