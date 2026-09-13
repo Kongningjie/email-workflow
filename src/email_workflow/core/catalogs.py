@@ -103,6 +103,10 @@ def load_prompt_document(path: Path) -> PromptDocument:
     return PromptDocument.model_validate(_read_yaml(path))
 
 
+def load_rule_set(path: Path) -> RuleSet:
+    return RuleSet.model_validate(_read_yaml(path))
+
+
 def validate_versioned_configs(config_dir: Path) -> None:
     required: list[
         tuple[

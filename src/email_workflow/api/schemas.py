@@ -7,11 +7,15 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from email_workflow.application.plans import PlanSnapshot
+from email_workflow.application.workflow import ValidationResult, VersionResult
+from email_workflow.domain.plan import TestPlanContent
 from email_workflow.infrastructure.models import (
     EvidenceSegment,
     ImportedEmail,
+    ReviewRecord,
     TestPlan,
     TestPlanVersion,
+    ValidationIssue,
 )
 
 
@@ -118,3 +122,83 @@ class PlanResponse(PlanSummaryResponse):
                 "version": PlanVersionResponse.from_record(snapshot.version).model_dump(),
             }
         )
+
+
+class CreateVersionRequest(BaseModel):
+    base_version: int = Field(ge=1)
+    content: TestPlanContent
+
+
+class VersionMutationResponse(BaseModel):
+    created: bool
+    version: PlanVersionResponse
+
+    @classmethod
+    def from_result(cls, result: VersionResult) -> VersionMutationResponse:
+        return cls(created=result.created, version=PlanVersionResponse.from_record(result.version))
+
+
+class ValidationIssueResponse(BaseModel):
+    id: uuid.UUID
+    rule_id: str
+    rule_version: str
+    severity: Literal["blocking", "warning", "info"]
+    field_path: str | None
+    message: str
+    suggestion: str | None
+
+    @classmethod
+    def from_record(cls, issue: ValidationIssue) -> ValidationIssueResponse:
+        return cls.model_validate({field: getattr(issue, field) for field in cls.model_fields})
+
+
+class ValidationResponse(BaseModel):
+    id: uuid.UUID
+    test_plan_id: uuid.UUID
+    test_plan_version_id: uuid.UUID
+    content_sha256: str
+    rule_set_version: str
+    status: Literal["passed", "failed"]
+    blocking_count: int
+    warning_count: int
+    finished_at: datetime
+    issues: list[ValidationIssueResponse]
+
+    @classmethod
+    def from_result(cls, result: ValidationResult) -> ValidationResponse:
+        return cls.model_validate(
+            {
+                **{
+                    field: getattr(result.run, field)
+                    for field in cls.model_fields
+                    if field != "issues"
+                },
+                "issues": [ValidationIssueResponse.from_record(issue) for issue in result.issues],
+            }
+        )
+
+
+class ReviewRequest(BaseModel):
+    decision: Literal["approved", "revision_requested"]
+    operator_name: str = Field(min_length=1, max_length=100)
+    operator_employee_id: str = Field(pattern=r"^[0-9]{9}$")
+    comment: str | None = Field(default=None, max_length=2000)
+    validation_run_id: uuid.UUID | None = None
+    acknowledged_warning_ids: list[uuid.UUID] = Field(default_factory=list)
+
+
+class ReviewResponse(BaseModel):
+    id: uuid.UUID
+    test_plan_id: uuid.UUID
+    test_plan_version_id: uuid.UUID
+    content_sha256: str
+    operator_name: str
+    operator_employee_id: str
+    decision: Literal["approved", "revision_requested"]
+    comment: str | None
+    acknowledged_warning_ids: list[uuid.UUID]
+    created_at: datetime
+
+    @classmethod
+    def from_record(cls, review: ReviewRecord) -> ReviewResponse:
+        return cls.model_validate({field: getattr(review, field) for field in cls.model_fields})

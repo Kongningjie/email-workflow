@@ -132,7 +132,6 @@ class TestPlanVersion(UuidPrimaryKeyMixin, CreatedAtMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("test_plan_id", "version_number", name="uq_plan_version_number"),
-        UniqueConstraint("test_plan_id", "content_sha256", name="uq_plan_content_sha256"),
         CheckConstraint("version_number >= 1", name="ck_plan_version_number"),
         CheckConstraint("char_length(content_sha256) = 64", name="ck_plan_version_sha256"),
         CheckConstraint("char_length(prompt_sha256) = 64", name="ck_plan_prompt_sha256"),
@@ -173,9 +172,10 @@ class ValidationIssue(UuidPrimaryKeyMixin, CreatedAtMixin, Base):
     severity: Mapped[str] = mapped_column(String(16), nullable=False)
     field_path: Mapped[str | None] = mapped_column(String(512))
     message: Mapped[str] = mapped_column(String(500), nullable=False)
+    suggestion: Mapped[str | None] = mapped_column(String(500))
 
     __table_args__ = (
-        CheckConstraint("severity IN ('blocking','warning')", name="ck_issue_severity"),
+        CheckConstraint("severity IN ('blocking','warning','info')", name="ck_issue_severity"),
         Index("ix_validation_issue_run", "validation_run_id"),
     )
 
@@ -199,6 +199,7 @@ class ReviewRecord(UuidPrimaryKeyMixin, CreatedAtMixin, Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("test_plan_version_id", name="uq_review_version_decision"),
         CheckConstraint("operator_employee_id ~ '^[0-9]{9}$'", name="ck_review_employee_id"),
         CheckConstraint("decision IN ('approved','revision_requested')", name="ck_review_decision"),
         CheckConstraint(

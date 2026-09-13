@@ -79,3 +79,19 @@ def test_spa_fallback_does_not_hide_unknown_api_route(tmp_path: Path) -> None:
         "field": None,
         "request_id": "missing-request",
     }
+
+
+def test_phase3_openapi_contract_is_exposed(tmp_path: Path) -> None:
+    settings = Settings(
+        app_env="test",
+        config_dir=Path("config"),
+        data_dir=tmp_path,
+        frontend_dist_dir=tmp_path / "frontend",
+    )
+    schema = create_app(settings).openapi()
+    paths = schema["paths"]
+
+    assert "post" in paths["/api/v1/test-plans/{plan_id}/versions"]
+    assert "post" in paths["/api/v1/test-plans/{plan_id}/validate"]
+    assert "post" in paths["/api/v1/test-plans/{plan_id}/submit-for-review"]
+    assert {"get", "post"} <= set(paths["/api/v1/test-plans/{plan_id}/reviews"])

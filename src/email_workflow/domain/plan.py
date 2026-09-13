@@ -151,8 +151,8 @@ class TestPlanDetailContent(StrictModel):
     execution_start_date: date | None
     execution_end_date: date | None
     scope: str
-    requirements: list[RequirementContent]
-    test_cases: list[TestCaseContent]
+    requirements: Annotated[list[RequirementContent], Field(max_length=100)]
+    test_cases: Annotated[list[TestCaseContent], Field(max_length=20)]
     evidence_references: list[EvidenceReference]
     unresolved_fields: list[str]
     field_metadata: dict[str, FieldMetadata]
@@ -178,5 +178,11 @@ class TestPlanContent(StrictModel):
     notes: str
     open_questions: list[str]
     evidence_references: list[EvidenceReference]
-    details: list[TestPlanDetailContent]
+    details: Annotated[list[TestPlanDetailContent], Field(max_length=10)]
     field_metadata: dict[str, FieldMetadata]
+
+    @model_validator(mode="after")
+    def total_case_limit(self) -> TestPlanContent:
+        if sum(len(detail.test_cases) for detail in self.details) > 100:
+            raise ValueError("整个计划最多包含 100 条用例")
+        return self

@@ -50,11 +50,18 @@ uv run python -m email_workflow.cli cleanup
 
 上传接口在邮件解析后同步执行一次结构化提取。未配置 `DASHSCOPE_API_KEY`，或模型调用、JSON Schema、Pydantic、证据校验失败时，接口仍会创建可人工填写的版本 1 空白草稿，并将邮件标记为 `extraction_failed`。
 
-阶段 2 可用查询接口：
+计划查询与阶段 3 工作流接口：
 
 ```text
 GET /api/v1/test-plans
 GET /api/v1/test-plans/{plan_id}
 GET /api/v1/test-plans/{plan_id}/versions
 GET /api/v1/test-plans/{plan_id}/versions/{version_number}
+POST /api/v1/test-plans/{plan_id}/versions
+POST /api/v1/test-plans/{plan_id}/validate
+POST /api/v1/test-plans/{plan_id}/submit-for-review
+POST /api/v1/test-plans/{plan_id}/reviews
+GET /api/v1/test-plans/{plan_id}/reviews
 ```
+
+保存完整计划快照时必须携带 `base_version`；内容哈希未变化不会新增版本，并发基线冲突返回 409。送审会重新运行版本化确定性规则，Blocking 阻止状态变化，Warning 必须在批准请求中通过当前 `validation_run_id` 和问题 ID 逐条确认。审核操作者工号只接受 9 位数字。

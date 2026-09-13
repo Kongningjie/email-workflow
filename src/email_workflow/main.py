@@ -16,9 +16,12 @@ from email_workflow.application.extraction import CatalogBundle, EvidenceRebuild
 from email_workflow.application.imports import EmailImportService, RetentionCleanupService
 from email_workflow.application.plan_generation import PlanGenerationService
 from email_workflow.application.plans import PlanQueryService
+from email_workflow.application.rules import RuleEngine
+from email_workflow.application.workflow import PlanWorkflowService
 from email_workflow.core.catalogs import (
     load_catalog,
     load_prompt_document,
+    load_rule_set,
     validate_versioned_configs,
 )
 from email_workflow.core.config import Settings, get_settings
@@ -87,6 +90,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         plan_generator=plan_generator,
     )
     plan_query_service = PlanQueryService(session_factory)
+    plan_workflow_service = PlanWorkflowService(
+        session_factory=session_factory,
+        rule_engine=RuleEngine(
+            rule_set=load_rule_set(active_settings.config_dir / "rules/v1.yaml"),
+            catalogs=catalogs,
+        ),
+    )
     cleanup_service = RetentionCleanupService(
         session_factory=session_factory,
         storage=storage,
@@ -106,6 +116,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = active_settings
     app.state.import_service = import_service
     app.state.plan_query_service = plan_query_service
+    app.state.plan_workflow_service = plan_workflow_service
     app.middleware("http")(request_id_middleware)
     register_error_handlers(app)
     app.include_router(health_router, prefix="/api/v1")

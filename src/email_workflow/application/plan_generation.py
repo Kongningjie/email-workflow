@@ -4,7 +4,6 @@ import hashlib
 import logging
 import uuid
 
-import jcs  # type: ignore[import-untyped]
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -16,6 +15,7 @@ from email_workflow.application.extraction import (
     StructuredRequirementExtractor,
     TestPlanDraftBuilder,
 )
+from email_workflow.core.canonical import canonical_sha256
 from email_workflow.core.catalogs import PromptDocument
 from email_workflow.domain.plan import ExtractionEvidence, ExtractionRequest, TestPlanContent
 from email_workflow.infrastructure.import_repository import ImportRepository
@@ -137,7 +137,7 @@ class PlanGenerationService:
         failure_code: str | None,
     ) -> uuid.UUID:
         serialized = content.model_dump(mode="json")
-        content_sha256 = hashlib.sha256(jcs.canonicalize(serialized)).hexdigest()
+        content_sha256 = canonical_sha256(serialized)
         prompt_sha256 = hashlib.sha256(self.prompt.system_prompt.encode("utf-8")).hexdigest()
         async with self.session_factory() as session:
             plan_repository = PlanRepository(session)
