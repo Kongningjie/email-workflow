@@ -79,3 +79,14 @@
 - 与冻结方案的偏差：无。
 - 遗留问题：平台报文硬契约和接近字段上限规则依赖阶段 4 映射配置，按计划在阶段 4 启用；真实 LLM 测试仍按显式门禁执行。
 - 下一步：完成容器端到端冒烟和推送前 Review；随后进入阶段 4 的 Mock Gateway、预览与提交。
+
+## 2026-09-13 — 阶段 4：Mock Gateway、预览与提交
+
+- 目标：实现与内部计划快照隔离的平台 DTO、二次确认、HMAC 幂等提交，以及不确定结果的对账和受控重试。
+- 完成内容：新增版本化平台字段上限和启动校验；统一 RFC 8785 canonical bytes、SHA-256、幂等键及 HMAC 输入；实现平台 DTO 与领域／值域映射，确保报文不包含邮件、证据、Prompt、开放问题或 Review 内容；实现独立 Mock Gateway 的 validate、submit、status、签名／正文哈希／五分钟时间窗校验及成功、重复、4xx、5xx、超时、查询成功／失败／not_found 场景；实现仅批准版本可预览、规则与 Warning 再核对、Mock validate、15 分钟令牌哈希存储、服务端报文重建、一次性确认、提交尝试记录、明确失败、不确定状态、对账和原身份重试；明确失败后允许修改并重新 Review，`submitted` 保持终态。
+- 变更文件／模块：平台领域 DTO、映射、连接器、签名、提交服务、Mock Gateway、提交 API／Schema、应用装配、映射配置、README 和阶段 4 测试。
+- 数据库迁移：无；阶段 0 已预建 PayloadPreview、Submission 和 SubmissionAttempt 所需字段及关键唯一约束，现有 Schema 无漂移。
+- 测试与结果：Ruff、mypy、全量 pytest（68 passed、1 skipped、总覆盖率 86%）通过；前端 ESLint、TypeScript、Vitest、生产构建与 npm audit（0 vulnerabilities）通过；容器内 Alembic 结构漂移检查和应用／Mock Gateway 健康检查通过；真实 HTTP 冒烟覆盖 Gateway 校验、HMAC 提交、重复去重、状态查询和超时转 unknown。专项测试覆盖 canonical 向量、字段／集合上限、敏感字段排除、HMAC 错误与过期、Gateway 幂等、成功及重复确认、不同确认声明冲突、4xx、5xx／unknown、查询成功／失败／not_found、重试参数复用和终态锁定。
+- 与冻结方案的偏差：无。
+- 遗留问题：真实企业测试管理平台连接器不在 MVP 范围；Mock Gateway 状态为本地进程内测试数据，服务重启后清空。
+- 下一步：进入阶段 5 前端实现。

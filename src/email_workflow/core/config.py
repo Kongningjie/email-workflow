@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     mock_gateway_hmac_secret: SecretStr = Field(
         default=SecretStr("replace-with-a-local-demo-secret")
     )
+    mock_gateway_timeout_seconds: int = 5
     run_live_llm_tests: bool = False
     max_upload_bytes: int = 5 * 1024 * 1024
     max_clean_body_chars: int = 200_000
@@ -63,6 +64,7 @@ class Settings(BaseSettings):
         "raw_retention_hours",
         "evidence_retention_days",
         "llm_timeout_seconds",
+        "mock_gateway_timeout_seconds",
     )
     @classmethod
     def positive_limit(cls, value: int) -> int:

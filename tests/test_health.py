@@ -95,3 +95,19 @@ def test_phase3_openapi_contract_is_exposed(tmp_path: Path) -> None:
     assert "post" in paths["/api/v1/test-plans/{plan_id}/validate"]
     assert "post" in paths["/api/v1/test-plans/{plan_id}/submit-for-review"]
     assert {"get", "post"} <= set(paths["/api/v1/test-plans/{plan_id}/reviews"])
+
+
+def test_phase4_openapi_contract_is_exposed(tmp_path: Path) -> None:
+    settings = Settings(
+        app_env="test",
+        config_dir=Path("config"),
+        data_dir=tmp_path,
+        frontend_dist_dir=tmp_path / "frontend",
+    )
+    paths = create_app(settings).openapi()["paths"]
+
+    assert "post" in paths["/api/v1/test-plans/{plan_id}/payload-previews"]
+    assert {"get", "post"} <= set(paths["/api/v1/test-plans/{plan_id}/submissions"])
+    assert "get" in paths["/api/v1/submissions/{submission_id}"]
+    assert "post" in paths["/api/v1/submissions/{submission_id}/reconcile"]
+    assert "post" in paths["/api/v1/submissions/{submission_id}/retry"]

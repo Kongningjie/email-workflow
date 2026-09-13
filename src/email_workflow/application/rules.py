@@ -10,6 +10,7 @@ from datetime import date
 from typing import Any
 
 from email_workflow.application.extraction import CatalogBundle
+from email_workflow.application.mapping import PlatformPayloadMapper
 from email_workflow.core.catalogs import RuleMetadata, RuleSet
 from email_workflow.domain.plan import EvidenceReference, TestPlanContent
 from email_workflow.infrastructure.models import EvidenceSegment
@@ -35,9 +36,16 @@ class ValidationFinding:
 class RuleEngine:
     """Pure, deterministic validation over one immutable plan snapshot."""
 
-    def __init__(self, *, rule_set: RuleSet, catalogs: CatalogBundle) -> None:
+    def __init__(
+        self,
+        *,
+        rule_set: RuleSet,
+        catalogs: CatalogBundle,
+        payload_mapper: PlatformPayloadMapper | None = None,
+    ) -> None:
         self.rule_set = rule_set
         self.catalogs = catalogs
+        self.payload_mapper = payload_mapper
         self._rules = {rule.id: rule for rule in rule_set.rules if rule.enabled}
 
     def validate(
@@ -224,6 +232,14 @@ class RuleEngine:
             add("evidence.partition_uncertain", "evidence", "请人工确认正文与引用区划分")
         if any(pattern.search(text) for text in excerpts for pattern in INJECTION_PATTERNS):
             add("security.prompt_injection", "evidence", "请忽略邮件中的指令并核对提取结果")
+
+        if self.payload_mapper is not None:
+            for finding in self.payload_mapper.inspect_limits(content):
+                add(
+                    "platform.near_limit" if finding.near_limit else "platform.payload_contract",
+                    finding.field_path,
+                    finding.message,
+                )
 
         return self._deduplicate(findings)
 

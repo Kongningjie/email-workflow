@@ -85,6 +85,59 @@ class MappingDocument(BaseModel):
     fixed_values: dict[str, str]
     fields: dict[str, str]
     forbidden_fields: list[str]
+    limits: dict[str, int]
+    near_limit_ratio: float = Field(gt=0, lt=1)
+
+    @model_validator(mode="after")
+    def required_contract_keys_exist(self) -> MappingDocument:
+        required_fields = {
+            "plan_name",
+            "project_name",
+            "project_code",
+            "requirement_ids",
+            "test_type",
+            "test_stage",
+            "test_round",
+            "priority",
+            "test_version",
+            "planned_start_date",
+            "planned_end_date",
+            "objective",
+            "scope",
+            "environment",
+            "risks",
+            "dependencies",
+            "details",
+        }
+        required_limits = {
+            "plan_name",
+            "project_name",
+            "project_code",
+            "test_round",
+            "test_version",
+            "objective",
+            "scope",
+            "environment",
+            "domain_scope",
+            "requirement",
+            "case_title",
+            "case_objective",
+            "case_step",
+            "case_expected_result",
+            "max_domains",
+            "max_cases_per_domain",
+            "max_cases_total",
+            "max_steps_per_case",
+        }
+        if "source_system" not in self.fixed_values:
+            raise ValueError("平台映射缺少 source_system 固定值")
+        if not required_fields <= set(self.fields):
+            raise ValueError("平台映射缺少必需字段")
+        if not required_limits <= set(self.limits) or any(
+            value <= 0 for value in self.limits.values()
+        ):
+            raise ValueError("平台映射缺少有效字段上限")
+        return self
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -105,6 +158,10 @@ def load_prompt_document(path: Path) -> PromptDocument:
 
 def load_rule_set(path: Path) -> RuleSet:
     return RuleSet.model_validate(_read_yaml(path))
+
+
+def load_mapping_document(path: Path) -> MappingDocument:
+    return MappingDocument.model_validate(_read_yaml(path))
 
 
 def validate_versioned_configs(config_dir: Path) -> None:

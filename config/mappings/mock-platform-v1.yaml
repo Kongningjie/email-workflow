@@ -30,3 +30,23 @@ forbidden_fields:
   - open_questions
   - unresolved_fields
   - review_comment
+limits:
+  plan_name: 200
+  project_name: 100
+  project_code: 100
+  test_round: 100
+  test_version: 100
+  objective: 2000
+  scope: 2000
+  environment: 2000
+  domain_scope: 2000
+  requirement: 2000
+  case_title: 300
+  case_objective: 2000
+  case_step: 2000
+  case_expected_result: 2000
+  max_domains: 10
+  max_cases_per_domain: 20
+  max_cases_total: 100
+  max_steps_per_case: 20
+near_limit_ratio: 0.9

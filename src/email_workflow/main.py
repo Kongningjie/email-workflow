@@ -11,15 +11,19 @@ from fastapi.staticfiles import StaticFiles
 from email_workflow.api.health import router as health_router
 from email_workflow.api.imports import router as imports_router
 from email_workflow.api.plans import router as plans_router
+from email_workflow.api.submissions import router as submissions_router
 from email_workflow.application.evidence import EvidenceSegmenter
 from email_workflow.application.extraction import CatalogBundle, EvidenceRebuilder
 from email_workflow.application.imports import EmailImportService, RetentionCleanupService
+from email_workflow.application.mapping import PlatformPayloadMapper
 from email_workflow.application.plan_generation import PlanGenerationService
 from email_workflow.application.plans import PlanQueryService
 from email_workflow.application.rules import RuleEngine
+from email_workflow.application.submissions import SubmissionService
 from email_workflow.application.workflow import PlanWorkflowService
 from email_workflow.core.catalogs import (
     load_catalog,
+    load_mapping_document,
     load_prompt_document,
     load_rule_set,
     validate_versioned_configs,
@@ -31,6 +35,7 @@ from email_workflow.core.middleware import request_id_middleware
 from email_workflow.infrastructure.database import create_engine, create_session_factory
 from email_workflow.infrastructure.email_parser import SafeEmailParser
 from email_workflow.infrastructure.llm import LLMExtractor
+from email_workflow.infrastructure.mock_connector import MockTestManagementConnector
 from email_workflow.infrastructure.storage import ImportStorage
 
 
@@ -59,6 +64,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         priorities=load_catalog(active_settings.config_dir / "values/priorities-v1.yaml"),
     )
     prompt = load_prompt_document(active_settings.config_dir / "prompts/extraction-v1.yaml")
+    payload_mapper = PlatformPayloadMapper(
+        mapping=load_mapping_document(
+            active_settings.config_dir / "mappings/mock-platform-v1.yaml"
+        ),
+        catalogs=catalogs,
+    )
     if prompt.model != active_settings.dashscope_model:
         raise ValueError("Prompt 配置模型必须与 DASHSCOPE_MODEL 一致")
     api_key = (
@@ -90,11 +101,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         plan_generator=plan_generator,
     )
     plan_query_service = PlanQueryService(session_factory)
+    rule_engine = RuleEngine(
+        rule_set=load_rule_set(active_settings.config_dir / "rules/v1.yaml"),
+        catalogs=catalogs,
+        payload_mapper=payload_mapper,
+    )
     plan_workflow_service = PlanWorkflowService(
         session_factory=session_factory,
-        rule_engine=RuleEngine(
-            rule_set=load_rule_set(active_settings.config_dir / "rules/v1.yaml"),
-            catalogs=catalogs,
+        rule_engine=rule_engine,
+    )
+    submission_service = SubmissionService(
+        session_factory=session_factory,
+        workflow_service=plan_workflow_service,
+        mapper=payload_mapper,
+        connector=MockTestManagementConnector(
+            base_url=active_settings.mock_gateway_base_url,
+            key_id=active_settings.mock_gateway_key_id,
+            hmac_secret=active_settings.mock_gateway_hmac_secret.get_secret_value(),
+            timeout_seconds=active_settings.mock_gateway_timeout_seconds,
         ),
     )
     cleanup_service = RetentionCleanupService(
@@ -117,11 +141,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.import_service = import_service
     app.state.plan_query_service = plan_query_service
     app.state.plan_workflow_service = plan_workflow_service
+    app.state.submission_service = submission_service
     app.middleware("http")(request_id_middleware)
     register_error_handlers(app)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(imports_router, prefix="/api/v1")
     app.include_router(plans_router, prefix="/api/v1")
+    app.include_router(submissions_router, prefix="/api/v1")
 
     frontend_dir = active_settings.frontend_dist_dir
     assets_dir = frontend_dir / "assets"

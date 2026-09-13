@@ -41,7 +41,12 @@ class ValidationResult:
 
 
 class PlanWorkflowService:
-    EDITABLE_STATES: ClassVar[set[str]] = {"draft", "revision_requested", "approved"}
+    EDITABLE_STATES: ClassVar[set[str]] = {
+        "draft",
+        "revision_requested",
+        "approved",
+        "submission_failed",
+    }
     TOP_METADATA_FIELDS: ClassVar[set[str]] = {
         "plan_name",
         "project_name",

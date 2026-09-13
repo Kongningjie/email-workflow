@@ -7,12 +7,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from email_workflow.application.plans import PlanSnapshot
+from email_workflow.application.submissions import PreviewResult
 from email_workflow.application.workflow import ValidationResult, VersionResult
 from email_workflow.domain.plan import TestPlanContent
 from email_workflow.infrastructure.models import (
     EvidenceSegment,
     ImportedEmail,
     ReviewRecord,
+    Submission,
     TestPlan,
     TestPlanVersion,
     ValidationIssue,
@@ -202,3 +204,64 @@ class ReviewResponse(BaseModel):
     @classmethod
     def from_record(cls, review: ReviewRecord) -> ReviewResponse:
         return cls.model_validate({field: getattr(review, field) for field in cls.model_fields})
+
+
+class PayloadPreviewResponse(BaseModel):
+    id: uuid.UUID
+    test_plan_id: uuid.UUID
+    test_plan_version_id: uuid.UUID
+    content_sha256: str
+    mapping_profile_version: str
+    payload: dict[str, object]
+    canonical_json: str
+    payload_sha256: str
+    validation_status: Literal["valid"]
+    confirmation_token: str
+    expires_at: datetime
+    created_at: datetime
+
+    @classmethod
+    def from_result(cls, result: PreviewResult) -> PayloadPreviewResponse:
+        preview = result.preview
+        return cls.model_validate(
+            {
+                **{
+                    field: getattr(preview, field)
+                    for field in cls.model_fields
+                    if field not in {"canonical_json", "confirmation_token"}
+                },
+                "canonical_json": result.canonical_json,
+                "confirmation_token": result.confirmation_token,
+            }
+        )
+
+
+class ConfirmSubmissionRequest(BaseModel):
+    confirmation_token: str = Field(min_length=32, max_length=200)
+    payload_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    operator_name: str = Field(min_length=1, max_length=100)
+    operator_employee_id: str = Field(pattern=r"^[0-9]{9}$")
+
+
+class SubmissionResponse(BaseModel):
+    id: uuid.UUID
+    test_plan_id: uuid.UUID
+    test_plan_version_id: uuid.UUID
+    payload_preview_id: uuid.UUID
+    mapping_profile_version: str
+    payload_sha256: str
+    submission_request_id: uuid.UUID
+    idempotency_key: str
+    status: Literal["submitting", "submitted", "submission_failed", "unknown"]
+    operator_name: str
+    operator_employee_id: str
+    confirmed_at: datetime
+    external_request_id: str | None
+    external_plan_id: str | None
+    safe_response_summary: str | None
+    finished_at: datetime | None
+    created_at: datetime
+
+    @classmethod
+    def from_record(cls, submission: Submission) -> SubmissionResponse:
+        return cls.model_validate({field: getattr(submission, field) for field in cls.model_fields})
