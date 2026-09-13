@@ -36,6 +36,7 @@ cd frontend
 npm run lint
 npm run typecheck
 npm run test
+npm run test:e2e
 npm run build
 ```
 
@@ -73,3 +74,5 @@ POST /api/v1/submissions/{submission_id}/retry
 保存完整计划快照时必须携带 `base_version`；内容哈希未变化不会新增版本，并发基线冲突返回 409。送审会重新运行版本化确定性规则，Blocking 阻止状态变化，Warning 必须在批准请求中通过当前 `validation_run_id` 和问题 ID 逐条确认。审核操作者工号只接受 9 位数字。
 
 只有当前批准版本可以生成平台报文预览。预览返回服务端生成的报文、canonical JSON、SHA-256 和 15 分钟一次性确认令牌；确认接口不接受客户端自定义平台 JSON。Mock Gateway 使用 HMAC-SHA256、五分钟时间窗和确定性幂等键；明确 4xx 记为 `submission_failed`，网络／超时／5xx 记为 `unknown`，后者必须先对账且平台明确返回 `not_found` 后才能原参数重试。
+
+前端提供邮件导入、计划列表、计划编辑与证据、规则审核、报文预览与提交五个页面。组件测试使用 Vitest，浏览器主链路使用 Playwright 并复用本机 Microsoft Edge；生产环境仍由 FastAPI 同源提供静态构建，不增加常驻 Node 服务。

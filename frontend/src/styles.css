@@ -17,6 +17,23 @@ body {
   min-height: 100vh;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+summary {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  background: rgb(219 234 254);
+  color: #172033;
+}
+
 :focus-visible {
   outline: 3px solid rgb(37 99 235 / 35%);
   outline-offset: 3px;
