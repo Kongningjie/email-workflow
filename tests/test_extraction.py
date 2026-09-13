@@ -72,7 +72,7 @@ def test_builder_maps_catalogs_rebuilds_references_and_applies_allowed_defaults(
 
 
 def test_unknown_evidence_id_rejects_entire_extraction() -> None:
-    payload = make_extraction_payload("invented-id")
+    payload = make_extraction_payload("evidence-9999")
     with pytest.raises(ExtractionFailure, match="unknown_evidence_id"):
         ExtractionValidator.validate_evidence_ids(payload, {"evidence-0001"})
 

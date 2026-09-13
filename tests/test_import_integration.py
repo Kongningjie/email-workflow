@@ -322,7 +322,7 @@ async def test_import_generates_one_validated_plan_version_and_duplicate_skips_e
     assert version.content["details"][0]["domain_code"] == "COMM"
     assert len(version.content_sha256) == 64
     assert version.content_sha256 == hashlib.sha256(jcs.canonicalize(version.content)).hexdigest()
-    assert version.prompt_version == "1.1.0"
+    assert version.prompt_version == "1.5.0"
     prompt = load_prompt_document(Path("config/prompts/extraction-v1.yaml"))
     assert version.prompt_sha256 == hashlib.sha256(prompt.system_prompt.encode()).hexdigest()
     assert len(versions) == 1
@@ -387,7 +387,7 @@ async def test_unknown_model_evidence_id_falls_back_to_blank_plan(
         plan_generator=build_plan_generator(
             session_factory=session_factory,
             storage=storage,
-            extractor=FakeExtractor(make_extraction_payload("unknown-evidence")),
+            extractor=FakeExtractor(make_extraction_payload("evidence-9999")),
         ),
         clock=FixedClock(datetime(2026, 9, 12, 8, 0, tzinfo=UTC)),
     )

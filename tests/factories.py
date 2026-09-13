@@ -58,7 +58,6 @@ def make_extraction_payload(evidence_id: str = "evidence-0001") -> ExtractionPay
                             "open_questions": [],
                         }
                     ],
-                    "evidence_ids": [evidence_id],
                     "unresolved_fields": [],
                 }
             ],

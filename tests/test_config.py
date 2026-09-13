@@ -21,6 +21,11 @@ def test_settings_resolve_data_path(tmp_path: Path) -> None:
     assert settings.data_dir.is_absolute()
 
 
+def test_settings_reject_native_dashscope_api_path() -> None:
+    with pytest.raises(ValidationError, match="OpenAI-compatible"):
+        Settings(dashscope_base_url="https://workspace.cn-beijing.maas.aliyuncs.com/api/v1")
+
+
 def test_catalog_rejects_duplicate_keys() -> None:
     item = {
         "key": "duplicate",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 from typing import Any, Never, cast
@@ -80,13 +81,18 @@ class LLMExtractor:
                 await client.close()
 
     def completion_arguments(self, request: ExtractionRequest) -> dict[str, Any]:
+        valid_evidence_ids = [item.evidence_id for item in request.evidence]
+        user_payload = {
+            "valid_evidence_ids": valid_evidence_ids,
+            "extraction_request": request.model_dump(mode="json"),
+        }
         return {
             "model": self.model,
             "messages": [
                 {"role": "system", "content": self.prompt.system_prompt},
                 {
                     "role": "user",
-                    "content": request.model_dump_json(exclude_none=False),
+                    "content": json.dumps(user_payload, ensure_ascii=False, separators=(",", ":")),
                 },
             ],
             "response_format": ExtractionPayload,

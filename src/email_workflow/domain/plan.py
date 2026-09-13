@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Provenance = Literal["source", "user_provided", "derived", "model_suggestion", "unresolved"]
 BoundedText = Annotated[str, Field(max_length=20_000)]
-EvidenceIdList = Annotated[list[str], Field(max_length=50)]
+EvidenceId = Annotated[str, Field(pattern=r"^evidence-\d{4}$")]
+EvidenceIdList = Annotated[list[EvidenceId], Field(max_length=50)]
 
 
 class StrictModel(BaseModel):
@@ -63,7 +64,6 @@ class ExtractedDomain(StrictModel):
     scope: ExtractedText
     requirements: Annotated[list[ExtractedRequirement], Field(max_length=100)]
     test_cases: Annotated[list[ExtractedTestCase], Field(max_length=20)]
-    evidence_ids: EvidenceIdList
     unresolved_fields: Annotated[list[str], Field(max_length=50)]
 
 
@@ -96,7 +96,7 @@ class ExtractionPayload(StrictModel):
 
 
 class ExtractionEvidence(StrictModel):
-    evidence_id: str
+    evidence_id: EvidenceId
     section_type: str
     text: str
 

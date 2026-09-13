@@ -432,8 +432,7 @@ class TestPlanDraftBuilder:
                 provenance="derived", evidence_references=[]
             )
         detail_references = self._deduplicate_references(
-            self._references(extracted.evidence_ids)
-            + [reference for item in requirements for reference in item.evidence_references]
+            [reference for item in requirements for reference in item.evidence_references]
             + [reference for item in test_cases for reference in item.evidence_references]
             + [
                 reference

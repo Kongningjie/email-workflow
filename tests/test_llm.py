@@ -51,6 +51,7 @@ def test_llm_contract_uses_strict_schema_without_tools_retry_or_token_limit() ->
     assert "tool_choice" not in arguments
     user_content = arguments["messages"][1]["content"]
     assert "evidence-0001" in user_content
+    assert json.loads(user_content)["valid_evidence_ids"] == ["evidence-0001"]
     assert "database" not in user_content.lower()
 
 
@@ -134,3 +135,5 @@ def test_json_schema_contains_frozen_collection_limits() -> None:
     steps_schema = schema["$defs"]["ExtractedTestCase"]["properties"]["steps"]
     assert steps_schema["minItems"] == 1
     assert steps_schema["maxItems"] == 20
+    evidence_items = schema["$defs"]["ExtractedText"]["properties"]["evidence_ids"]["items"]
+    assert evidence_items["pattern"] == r"^evidence-\d{4}$"

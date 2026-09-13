@@ -1,6 +1,6 @@
 # 邮件驱动测试计划自动化平台文档
 
-本目录是项目一期 MVP 的设计、实施与验收依据。当前状态为 **已冻结，允许进入 Coding**。
+本目录是项目一期 MVP 的设计、实施与验收依据。当前状态为 **阶段 6 已验收，可作为开发／演示版本交付**。
 
 ## 阅读顺序
 
@@ -16,6 +16,7 @@
 10. `frozen/10-acceptance-criteria.md`
 11. `standards/` 下的工程规范
 12. `development/implementation-plan.md`
+13. `reports/phase-6-acceptance-report.md`
 
 ## 文档效力
 

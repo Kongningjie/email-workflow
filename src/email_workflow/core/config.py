@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import Field, SecretStr, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -81,6 +82,17 @@ class Settings(BaseSettings):
         if isinstance(segment_chars, int) and value >= segment_chars:
             raise ValueError("证据重叠长度必须小于切片长度")
         return value
+
+    @field_validator("dashscope_base_url")
+    @classmethod
+    def valid_dashscope_openai_base_url(cls, value: str) -> str:
+        normalized = value.rstrip("/")
+        parsed = urlparse(normalized)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise ValueError("DashScope Base URL 必须使用 HTTPS")
+        if not parsed.path.endswith("/compatible-mode/v1"):
+            raise ValueError("DashScope Base URL 必须使用 OpenAI-compatible 路径")
+        return normalized
 
 
 @lru_cache(maxsize=1)

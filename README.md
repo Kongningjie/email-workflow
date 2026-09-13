@@ -1,6 +1,6 @@
 # 邮件驱动测试计划自动化平台
 
-从用户上传的 `.eml` 生成可审核、可追溯并可提交到测试管理平台的测试计划。当前仓库正在按 `docs/development/implementation-plan.md` 分阶段实现。
+从用户上传的 `.eml` 生成可审核、可追溯并可提交到测试管理平台的测试计划。当前仓库已完成一期 MVP 阶段 6 验收，详细结果见 `docs/reports/phase-6-acceptance-report.md`。
 
 ## 本地开发
 
@@ -50,6 +50,15 @@ uv run python -m email_workflow.cli cleanup
 ```
 
 上传接口在邮件解析后同步执行一次结构化提取。未配置 `DASHSCOPE_API_KEY`，或模型调用、JSON Schema、Pydantic、证据校验失败时，接口仍会创建可人工填写的版本 1 空白草稿，并将邮件标记为 `extraction_failed`。
+
+真实模型评测默认关闭。配置本地 `.env` 后可显式运行八封黄金邮件评测：
+
+```powershell
+$env:RUN_LIVE_LLM_TESTS='1'
+uv run pytest tests/test_llm_live.py -s
+```
+
+评测对每封邮件只调用一次模型，并断言领域召回率、明确关键事实准确率和关键事实编造指标；它不属于常规 CI 门禁。
 
 计划查询与阶段 3 工作流接口：
 
